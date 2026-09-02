@@ -34,3 +34,18 @@ export interface DocumentChunk {
   chunk_index: number;
   last_updated: string | null;
 }
+
+export interface EmbeddingRecord {
+  chunk_id: string;
+  scheme_id: string;
+  scheme_name: string;
+  source_url: string;
+  source_file: string;
+  chunk_index: number;
+  chunk_text: string;
+  last_updated: string | null;
+  embedding: number[];
+  embedding_model: string;
+  embedding_dimensions: number;
+  normalized: boolean;
+}

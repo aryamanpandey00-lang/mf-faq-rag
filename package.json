@@ -9,9 +9,11 @@
     "lint": "eslint",
     "ingest": "tsx scripts/ingest.ts",
     "chunk": "tsx scripts/chunk.ts",
+    "embed": "tsx scripts/embed.ts",
     "test": "tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.2.0",
     "next": "16.3.4",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -26,5 +28,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.24.3": true
   }
 }
