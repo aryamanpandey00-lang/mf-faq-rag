@@ -49,3 +49,15 @@ export interface EmbeddingRecord {
   embedding_dimensions: number;
   normalized: boolean;
 }
+
+export interface RetrievalResult {
+  chunkId: string;
+  schemeId: string;
+  schemeName: string;
+  sourceUrl: string;
+  sourceFile: string;
+  chunkText: string;
+  chunkIndex: number;
+  lastUpdated: string | null;
+  similarity: number;
+}

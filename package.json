@@ -13,6 +13,7 @@
     "db:setup": "tsx scripts/db-setup.ts",
     "db:ingest": "tsx scripts/db-ingest.ts",
     "db:check": "tsx scripts/db-check.ts",
+    "retrieve": "tsx scripts/retrieve.ts",
     "test": "tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
