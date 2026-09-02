@@ -23,3 +23,14 @@ export interface RawSourceDocument {
   extraction: ExtractionMetadata;
   extractedText: string;
 }
+
+export interface DocumentChunk {
+  chunk_id: string;
+  scheme_id: string;
+  scheme_name: string;
+  source_url: string;
+  source_file: string;
+  chunk_text: string;
+  chunk_index: number;
+  last_updated: string | null;
+}

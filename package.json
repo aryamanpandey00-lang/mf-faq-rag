@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "ingest": "tsx scripts/ingest.ts",
+    "chunk": "tsx scripts/chunk.ts",
     "test": "tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
