@@ -1,15 +1,37 @@
+import os from "node:os";
 import path from "node:path";
 import { pipeline, env } from "@huggingface/transformers";
 import { DATA_DIR } from "../ingestion/persist";
 import {
   EMBEDDING_MODEL_ID,
+  EMBEDDING_MODEL_CACHE_ENV,
   EMBEDDING_DIMENSION,
   EMBEDDING_POOLING,
   EMBEDDING_NORMALIZED,
   EMBEDDING_DTYPE,
 } from "../../config/embedding";
 
-export const MODEL_CACHE_DIR = path.join(DATA_DIR, "models");
+// Local-development model cache (already populated during ingestion).
+const LOCAL_MODEL_CACHE_DIR = path.join(DATA_DIR, "models");
+
+// Vercel serverless instances have read-only project directories but expose
+// writable, ephemeral storage under the OS temp directory. Transformers.js
+// writes downloaded model files into `env.cacheDir`, so on Vercel we must
+// point it at a writable location and accept a re-download on cold start.
+const SERVERLESS_MODEL_CACHE_DIR = path.join(os.tmpdir(), "mf-faq-rag-models");
+
+export function resolveModelCacheDir(): string {
+  const override = process.env[EMBEDDING_MODEL_CACHE_ENV];
+  if (override && override.trim().length > 0) {
+    return override.trim();
+  }
+  if (process.env.VERCEL !== undefined) {
+    return SERVERLESS_MODEL_CACHE_DIR;
+  }
+  return LOCAL_MODEL_CACHE_DIR;
+}
+
+export const MODEL_CACHE_DIR = resolveModelCacheDir();
 
 export interface Embedder {
   embedBatch(texts: string[]): Promise<number[][]>;
@@ -23,6 +45,7 @@ export interface EmbedderOptions {
   dtype?: string;
   cacheDir?: string;
   allowRemoteModels?: boolean;
+  allowLocalModels?: boolean;
 }
 
 type FeatureExtractor = (
@@ -33,6 +56,9 @@ type FeatureExtractor = (
 export function configureEmbedderEnvironment(options: EmbedderOptions = {}): void {
   env.cacheDir = options.cacheDir ?? MODEL_CACHE_DIR;
   env.allowRemoteModels = options.allowRemoteModels ?? true;
+  if (options.allowLocalModels !== undefined) {
+    env.allowLocalModels = options.allowLocalModels;
+  }
 }
 
 async function loadFeatureExtractor(options: EmbedderOptions): Promise<FeatureExtractor> {
@@ -57,7 +83,12 @@ export function createEmbedder(options: EmbedderOptions = {}): Embedder {
 
   const getExtractor = (): Promise<FeatureExtractor> => {
     if (!extractorPromise) {
-      extractorPromise = loadFeatureExtractor(options);
+      extractorPromise = loadFeatureExtractor(options).catch((error) => {
+        // Do not cache a rejected load so that a later request can retry
+        // (e.g. re-download the model after an ephemeral cache was cleared).
+        extractorPromise = null;
+        throw error;
+      });
     }
     return extractorPromise;
   };

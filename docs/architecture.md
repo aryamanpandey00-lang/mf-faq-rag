@@ -621,6 +621,11 @@ Defined in `.env` locally and as Vercel project environment variables in product
 
 No `NEXT_PUBLIC_` secret variables are used; Mistral and Neon credentials must not reach the browser.
 
+#### Embedding model cache at runtime
+
+Transformers.js writes downloaded files (the embedding model's ONNX weights + tokenizer) into `env.cacheDir`. Locally this is `data/models` (pre-populated during ingestion and gitignored). On Vercel the project directory is read-only, so the query-time embedder switches to writable ephemeral storage under the OS temp directory (see `lib/embedding/index.ts`; `resolveModelCacheDir()`). Because that storage is ephemeral, a cold start may re-download `sentence-transformers/all-MiniLM-L6-v2` from the Hugging Face hub into the writable cache; the API route tolerates a missing cache and re-initializes the model on demand. The server-only variable `MODEL_CACHE_DIR` overrides the selection where required. The embedding model, dimensions (384), and normalization are unchanged.
+
+
 ### Secret Handling
 
 - Local: `.env` (already excluded from Git via `.gitignore`).
