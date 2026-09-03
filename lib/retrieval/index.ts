@@ -2,6 +2,7 @@ import {
   DEFAULT_TOP_K,
   DEFAULT_SIMILARITY_THRESHOLD,
 } from "../../config/retrieval";
+import { detectSchemesInQuery } from "../../config/sources";
 import { embedText } from "../embedding";
 import type { Database } from "../vectordb/connection";
 import type { RetrievalResult } from "../types";
@@ -35,13 +36,22 @@ export async function retrieve(
     throw new RetrievalError(`topK must be a positive integer (got ${topK})`);
   }
 
+  const matchedSchemes = detectSchemesInQuery(query);
+  const sourceFilter =
+    matchedSchemes.length === 1 ? matchedSchemes[0].url : undefined;
+
   const queryEmbedding = await embedder(query);
 
   if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
     throw new RetrievalError("query embedding was empty");
   }
 
-  const candidates = await searchSimilarChunks(db, queryEmbedding, topK);
+  const candidates = await searchSimilarChunks(
+    db,
+    queryEmbedding,
+    topK,
+    sourceFilter
+  );
 
   const results = candidates.filter(
     (candidate) => candidate.similarity >= threshold

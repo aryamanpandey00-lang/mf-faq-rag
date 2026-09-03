@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { APPROVED_SOURCES } from "../config/sources";
+import { APPROVED_SOURCES, detectSchemesInQuery } from "../config/sources";
 import { EMBEDDING_MODEL_ID, EMBEDDING_DIMENSION } from "../config/embedding";
 import {
   DEFAULT_TOP_K,
@@ -200,6 +200,64 @@ test("retrieval SQL restricts to the approved source URLs", async () => {
   for (const url of urlsParam) {
     assert.ok(APPROVED_SOURCES.some((s) => s.url === url));
   }
+});
+
+// ------------------------- Scheme detection -------------------------
+
+test("detectSchemesInQuery identifies a single explicitly named scheme", () => {
+  assert.deepEqual(
+    detectSchemesInQuery("What is the expense ratio of HDFC Large Cap Fund?").map((s) => s.schemeId),
+    ["hdfc-large-cap"]
+  );
+  assert.deepEqual(
+    detectSchemesInQuery("Minimum SIP for HDFC Small Cap Fund").map((s) => s.schemeId),
+    ["hdfc-small-cap"]
+  );
+});
+
+test("detectSchemesInQuery returns multiple sources for a multi-scheme query", () => {
+  const ids = detectSchemesInQuery("Compare HDFC Large Cap and HDFC Small Cap").map((s) => s.schemeId).sort();
+  assert.deepEqual(ids, ["hdfc-large-cap", "hdfc-small-cap"]);
+});
+
+test("detectSchemesInQuery returns no sources for an ambiguous query", () => {
+  assert.deepEqual(detectSchemesInQuery("What is the minimum SIP investment?"), []);
+});
+
+test("detectSchemesInQuery dedupes multiple keywords for the same scheme", () => {
+  // "elss" and "tax saver" both map to hdfc-elss; the scheme should appear once.
+  assert.deepEqual(
+    detectSchemesInQuery("HDFC ELSS tax saver fund").map((s) => s.schemeId),
+    ["hdfc-elss"]
+  );
+});
+
+test("single-scheme query filters retrieval to that scheme's URL", async () => {
+  const db = new FakeSearchDb();
+  const largeCap = APPROVED_SOURCES[0];
+  await retrieve(db, "What is the expense ratio of HDFC Large Cap Fund?", {
+    embed: async (text) => deterministicVector(text),
+  });
+  assert.ok(db.commands[0].includes("source_url = $3"));
+  assert.ok(!db.commands[0].includes("source_url = ANY"));
+  assert.equal(db.paramsSets[0][2], largeCap.url);
+});
+
+test("multi-scheme query does not filter and keeps the approved global filter", async () => {
+  const db = new FakeSearchDb();
+  await retrieve(db, "Compare HDFC Large Cap and HDFC Small Cap funds", {
+    embed: async (text) => deterministicVector(text),
+  });
+  assert.ok(db.commands[0].includes("source_url = ANY($3::text[])"));
+  const urlsParam = db.paramsSets[0][2] as string[];
+  assert.equal(urlsParam.length, APPROVED_SOURCES.length);
+});
+
+test("buildSearchSql with a source URL uses an equality filter", () => {
+  const sql = buildSearchSql("https://groww.in/funds/hdfc-large-cap");
+  assert.match(sql, /source_url\s*=\s*\$3/);
+  assert.ok(!sql.includes("ANY"));
+  assert.ok(!sql.includes("::text[]"));
 });
 
 // ------------------------- Result filtering / ordering -------------------------

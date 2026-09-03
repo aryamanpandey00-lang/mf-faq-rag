@@ -55,3 +55,12 @@ export function getSourceByUrl(url: string): SchemeSource | undefined {
 export function getSourceBySchemeId(schemeId: string): SchemeSource | undefined {
   return APPROVED_SOURCES.find((source) => source.schemeId === schemeId);
 }
+
+export function detectSchemesInQuery(query: string): SchemeSource[] {
+  const lowered = query.toLowerCase();
+  return APPROVED_SOURCES.filter((source) =>
+    source.identityKeywords.some((keyword) =>
+      lowered.includes(keyword.toLowerCase())
+    )
+  );
+}

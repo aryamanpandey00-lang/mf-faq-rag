@@ -19,7 +19,11 @@ interface RawSearchRow extends QueryRow {
 
 const APPROVED_URL_LIST = [...APPROVED_URLS];
 
-export function buildSearchSql(): string {
+export function buildSearchSql(sourceUrl?: string): string {
+  const sourceCondition =
+    sourceUrl !== undefined
+      ? `source_url = $3`
+      : `source_url = ANY($3::text[])`;
   return `
 SELECT
   chunk_id,
@@ -32,7 +36,7 @@ SELECT
   last_updated,
   1 - (embedding <=> $1::vector) AS similarity
 FROM ${DB_TABLE}
-WHERE source_url = ANY($3::text[])
+WHERE ${sourceCondition}
 ORDER BY embedding <=> $1::vector
 LIMIT $2
 `;
@@ -41,7 +45,8 @@ LIMIT $2
 export async function searchSimilarChunks(
   db: Database,
   queryEmbedding: number[],
-  topK: number = DEFAULT_TOP_K
+  topK: number = DEFAULT_TOP_K,
+  sourceUrl?: string
 ): Promise<RetrievalResult[]> {
   if (!Array.isArray(queryEmbedding) || queryEmbedding.length === 0) {
     throw new RetrievalError("query embedding must be a non-empty array");
@@ -49,10 +54,13 @@ export async function searchSimilarChunks(
 
   const vectorLiteral = `[${queryEmbedding.join(",")}]`;
 
-  const result = await db.query<RawSearchRow>(buildSearchSql(), [
+  const sourceParam =
+    sourceUrl !== undefined ? sourceUrl : APPROVED_URL_LIST;
+
+  const result = await db.query<RawSearchRow>(buildSearchSql(sourceUrl), [
     vectorLiteral,
     topK,
-    APPROVED_URL_LIST,
+    sourceParam,
   ]);
 
   return result.rows.map((row) => ({
