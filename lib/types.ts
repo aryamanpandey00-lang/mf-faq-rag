@@ -61,3 +61,19 @@ export interface RetrievalResult {
   lastUpdated: string | null;
   similarity: number;
 }
+
+export type AnswerStatus =
+  | "answered"
+  | "insufficient_information"
+  | "out_of_scope"
+  | "configuration_error"
+  | "generation_error";
+
+export interface GeneratedAnswer {
+  answer: string | null;
+  sourceUrl: string | null;
+  schemeId: string | null;
+  schemeName: string | null;
+  lastUpdated: string | null;
+  status: AnswerStatus;
+}

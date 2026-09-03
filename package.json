@@ -14,6 +14,7 @@
     "db:ingest": "tsx scripts/db-ingest.ts",
     "db:check": "tsx scripts/db-check.ts",
     "retrieve": "tsx scripts/retrieve.ts",
+    "generate": "tsx scripts/generate.ts",
     "test": "tsx --test \"tests/**/*.test.ts\""
   },
   "dependencies": {
